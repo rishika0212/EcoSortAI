@@ -1,0 +1,46 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'user_service.dart';
+
+class MLService {
+  static const String baseUrl = "http://192.168.1.222:8000";
+
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    final headers = <String, String>{};
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  // Plastic type prediction using image
+  Future<Map<String, dynamic>> predictPlastic(String imagePath) async {
+    final url = Uri.parse('$baseUrl/ml/predict');
+    final headers = await _getAuthHeaders();
+
+    final request = http.MultipartRequest('POST', url);
+    request.headers.addAll(headers);
+    request.files.add(await http.MultipartFile.fromPath('file', imagePath));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      // Award points after a successful prediction
+      final predictedType = data['predicted_class'] ?? 'unknown';
+      await UserService().updatePoints(10, predictedType);
+
+      return {'success': true, 'data': data};
+    } else {
+      return {
+        'success': false,
+        'message': 'Prediction failed: ${response.statusCode}',
+      };
+    }
+  }
+}
