@@ -4,6 +4,7 @@ from app.database.models import User
 from app.users.schemas import UpdatePointsRequest
 from app.auth.dependencies import get_current_user
 from app.database.db_utils import get_db
+from typing import List
 
 router = APIRouter()
 
@@ -90,3 +91,69 @@ def get_user_profile(current_user: User = Depends(get_current_user)):
     }
     print(f"API: Response data: {response}")
     return response
+
+
+@router.get("/leaderboard")
+def get_leaderboard(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Get a list of all users sorted by points for the leaderboard.
+    Only returns username, points, badge, and badge_color for privacy reasons.
+    """
+    print("API: Fetching leaderboard data")
+    
+    try:
+        # Get all users ordered by points in descending order
+        users = db.query(User).order_by(User.points.desc()).all()
+        
+        print(f"API: Found {len(users)} users in database")
+        
+        # Create a list of user data for the leaderboard
+        leaderboard_data = []
+        for index, user in enumerate(users):
+            user_data = {
+                "rank": index + 1,
+                "username": user.username,
+                "points": user.points,
+                "badge": user.badge,
+                "badge_color": user.badge_color,
+                "total_items_recycled": user.total_items_recycled,
+                # Add a flag to identify the current user
+                "is_current_user": user.id == current_user.id
+            }
+            leaderboard_data.append(user_data)
+            print(f"API: Added user to leaderboard: {user.username}, points: {user.points}")
+        
+        print(f"API: Returning leaderboard with {len(leaderboard_data)} users")
+        
+        # If no users found, add at least the current user
+        if not leaderboard_data:
+            print("API: No users found, adding current user")
+            leaderboard_data.append({
+                "rank": 1,
+                "username": current_user.username,
+                "points": current_user.points,
+                "badge": current_user.badge,
+                "badge_color": current_user.badge_color,
+                "total_items_recycled": current_user.total_items_recycled,
+                "is_current_user": True
+            })
+        
+        return {
+            "success": True,
+            "data": leaderboard_data
+        }
+    except Exception as e:
+        print(f"API: Error fetching leaderboard: {e}")
+        # Return at least the current user if there's an error
+        return {
+            "success": True,
+            "data": [{
+                "rank": 1,
+                "username": current_user.username,
+                "points": current_user.points,
+                "badge": current_user.badge,
+                "badge_color": current_user.badge_color,
+                "total_items_recycled": current_user.total_items_recycled,
+                "is_current_user": True
+            }]
+        }

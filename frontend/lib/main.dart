@@ -47,41 +47,52 @@ class _AuthCheckerState extends State<AuthChecker> {
 
   Future<void> _initialize() async {
     final loggedIn = await AuthService().isLoggedIn();
+    print("AuthChecker: User is logged in: $loggedIn");
 
     if (loggedIn) {
-      // First get local data
-      final uname = await LocalStorageService.getUsername();
-      final pts = await LocalStorageService.getPoints();
-      
-      setState(() {
-        isLoggedIn = true;
-        username = uname ?? 'User';
-        points = pts;
-      });
-      
-      // Then refresh from server
       try {
+        // Always refresh from server first to ensure we have the latest data
         print("AuthChecker: Refreshing user data from server");
         await AuthService().refreshUserData();
         
-        // Update with fresh data
+        // Get the fresh data
         final freshUsername = await LocalStorageService.getUsername();
         final freshPoints = await LocalStorageService.getPoints();
         
         if (mounted) {
           setState(() {
+            isLoggedIn = true;
             username = freshUsername ?? 'User';
             points = freshPoints;
           });
-          print("AuthChecker: Updated with fresh data - points: $freshPoints");
+          print("AuthChecker: Initialized with fresh data - username: $freshUsername, points: $freshPoints");
         }
       } catch (e) {
         print("AuthChecker: Error refreshing user data: $e");
+        
+        // Fallback to local data if server refresh fails
+        final uname = await LocalStorageService.getUsername();
+        final pts = await LocalStorageService.getPoints();
+        
+        if (mounted) {
+          setState(() {
+            isLoggedIn = true;
+            username = uname ?? 'User';
+            points = pts;
+          });
+          print("AuthChecker: Initialized with local data - username: $uname, points: $pts");
+        }
       }
     } else {
+      // Clear any stale data if not logged in
+      await LocalStorageService.clearAllUserData();
+      
       setState(() {
         isLoggedIn = false;
+        username = null;
+        points = 0;
       });
+      print("AuthChecker: User not logged in, cleared all data");
     }
   }
 

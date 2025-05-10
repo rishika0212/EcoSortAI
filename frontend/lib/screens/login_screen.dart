@@ -45,7 +45,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final result = await authService.login(username, password);
 
     if (!mounted) return;
-    setState(() => isLoading = false);
 
     if (result['success']) {
       // Save user data to SharedPreferences
@@ -54,12 +53,41 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('userData', userData.toString());
 
-      // Navigate to HomeScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      try {
+        // Explicitly fetch user profile to get points before navigating
+        print("LoginScreen: Explicitly fetching user profile before navigation");
+        await authService.refreshUserData();
+        
+        // Get the points after profile is fetched
+        final points = await SharedPreferences.getInstance().then((prefs) => prefs.getInt('points') ?? 0);
+        print("LoginScreen: Fetched points before navigation: $points");
+        
+        if (!mounted) return;
+        setState(() => isLoading = false);
+        
+        // Navigate to HomeScreen with the fetched points
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(
+              initialUsername: username,
+              initialPoints: points,
+            ),
+          ),
+        );
+      } catch (e) {
+        print("LoginScreen: Error fetching user profile: $e");
+        if (!mounted) return;
+        setState(() => isLoading = false);
+        
+        // Navigate anyway, but the points might be 0
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
     } else {
+      setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['message'] ?? "Login failed. Please try again.")),
       );

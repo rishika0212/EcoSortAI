@@ -6,9 +6,11 @@ import 'package:http/http.dart' as http;
 import '../screens/education_screen.dart';
 import '../screens/points_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/leaderboard_screen.dart';
 import '../services/local_storage_service.dart';
 import '../services/user_service.dart';
 import '../services/event_bus.dart';
+import '../services/auth_service.dart';
 import '../widgets/batch_goal_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,20 +35,65 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    print("HomeScreen: initState called with initialUsername: ${widget.initialUsername}, initialPoints: ${widget.initialPoints}");
     _username = widget.initialUsername;
     _points = widget.initialPoints;
+    
+    // Load user data immediately to ensure we have the latest data
     _loadUserData();
+    
+    // Listen for points updates
+    EventBus().listenToPointsUpdated((points) {
+      print("HomeScreen: Received points update event with points: $points");
+      if (mounted) {
+        setState(() {
+          _points = points;
+        });
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    // Remove event listeners
+    EventBus().offPointsUpdated();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
-    // Load from local storage to ensure we have the latest data
-    final username = await LocalStorageService.getUsername();
-    final points = await LocalStorageService.getPoints();
+    print("HomeScreen: Loading user data");
     
-    setState(() {
-      _username = username ?? _username;
-      _points = points;
-    });
+    try {
+      // First refresh from server to ensure we have the latest data
+      print("HomeScreen: Refreshing user data from server");
+      await AuthService().refreshUserData();
+      
+      // Then load from local storage
+      final username = await LocalStorageService.getUsername();
+      final points = await LocalStorageService.getPoints();
+      
+      if (mounted) {
+        setState(() {
+          _username = username ?? _username;
+          _points = points;
+        });
+        print("HomeScreen: Updated with fresh data - username: $_username, points: $_points");
+      }
+    } catch (e) {
+      print("HomeScreen: Error refreshing user data: $e");
+      
+      // Fallback to local storage if server refresh fails
+      final username = await LocalStorageService.getUsername();
+      final points = await LocalStorageService.getPoints();
+      
+      if (mounted) {
+        setState(() {
+          _username = username ?? _username;
+          _points = points;
+        });
+        print("HomeScreen: Updated with local data - username: $_username, points: $_points");
+      }
+    }
   }
 
   @override
@@ -55,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
       HomeContent(username: _username, initialPoints: _points),
       EducationScreen(),
       const PointsScreen(),
+      const LeaderboardScreen(),
       const ProfileScreen(),
     ];
 
@@ -66,18 +114,26 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
+          print("HomeScreen: Tab changed from $_currentIndex to $index");
           // If we're switching to the Points tab, refresh user data
           if (index == 2 && _currentIndex != 2) {
             _loadUserData();
+          }
+          // If we're switching to the Leaderboard tab, emit a leaderboard update event
+          if (index == 3 && _currentIndex != 3) {
+            print("HomeScreen: Emitting leaderboard update event");
+            EventBus().emitLeaderboardUpdated();
           }
           setState(() => _currentIndex = index);
         },
         selectedItemColor: Colors.green.shade700,
         unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed, // Required for more than 4 items
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Education'),
           BottomNavigationBarItem(icon: Icon(Icons.emoji_events), label: 'Points'),
+          BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: 'Leaders'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
@@ -142,6 +198,23 @@ class _HomeContentState extends State<HomeContent> {
     _points = widget.initialPoints;
     _loadPoints();
     _resetBatchCountsIfNeeded();
+    
+    // Listen for points updates
+    EventBus().listenToPointsUpdated((points) {
+      print("HomeContent: Received points update event with points: $points");
+      if (mounted) {
+        setState(() {
+          _points = points;
+        });
+      }
+    }, this);
+  }
+  
+  @override
+  void dispose() {
+    // Remove event listeners
+    EventBus().offPointsUpdated(this);
+    super.dispose();
   }
   
   // Reset batch counts if it's a new day or if they haven't been initialized yet
@@ -212,13 +285,26 @@ class _HomeContentState extends State<HomeContent> {
 
   Future<void> _loadPoints() async {
     try {
+      // First try to refresh from server
+      print("HomeContent: Refreshing points from server");
+      try {
+        await AuthService().refreshUserData();
+        print("HomeContent: Successfully refreshed user data from server");
+      } catch (e) {
+        print("HomeContent: Error refreshing from server, will use local data: $e");
+      }
+      
+      // Then load from local storage
       final points = await LocalStorageService.getPoints();
-      print("HomeScreen: Loaded points = $points");
-      setState(() {
-        _points = points;
-      });
+      print("HomeContent: Loaded points = $points");
+      
+      if (mounted) {
+        setState(() {
+          _points = points;
+        });
+      }
     } catch (e) {
-      print("HomeScreen: Error loading points: $e");
+      print("HomeContent: Error loading points: $e");
     }
   }
 

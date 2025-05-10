@@ -19,6 +19,50 @@ class UserService {
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
   }
+  
+  /// Fetch leaderboard data
+  Future<Map<String, dynamic>> getLeaderboard() async {
+    final url = Uri.parse('$baseUrl/leaderboard');
+    print("UserService: Fetching leaderboard from $url");
+
+    try {
+      final headers = await _getAuthHeaders();
+      print("UserService: Using headers: $headers");
+      
+      final response = await http
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      print("UserService: Leaderboard response status: ${response.statusCode}");
+      
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        print("UserService: Successfully fetched leaderboard data");
+        print("UserService: Leaderboard data: ${data['data']}");
+        
+        // Ensure we have a valid data structure
+        if (data['data'] == null) {
+          print("UserService: Leaderboard data is null");
+          return {
+            'success': false,
+            'message': 'No leaderboard data received from server',
+          };
+        }
+        
+        return {'success': true, 'data': data['data']};
+      } else {
+        print("UserService: Failed to fetch leaderboard: ${data['detail'] ?? 'Unknown error'}");
+        return {
+          'success': false,
+          'message': data['detail'] ?? 'Failed to fetch leaderboard.',
+        };
+      }
+    } catch (e) {
+      print("UserService: Exception fetching leaderboard: $e");
+      return {'success': false, 'message': 'Error fetching leaderboard: $e'};
+    }
+  }
 
   /// Fetch authenticated user's profile
   Future<Map<String, dynamic>> getUserProfile() async {
@@ -99,6 +143,10 @@ class UserService {
             // Emit points updated event
             EventBus().emitPointsUpdated(points);
             print("UserService: Emitted points updated event with $points points");
+            
+            // Also emit a leaderboard update event
+            EventBus().emitLeaderboardUpdated();
+            print("UserService: Emitted leaderboard updated event");
           } else {
             print("UserService: No points data in response");
           }
@@ -150,6 +198,10 @@ class UserService {
           if (data['points'] != null) {
             print("UserService: Emitting second points update event to ensure UI refresh");
             EventBus().emitPointsUpdated(data['points'] as int);
+            
+            // Also emit a leaderboard update event
+            EventBus().emitLeaderboardUpdated();
+            print("UserService: Emitted second leaderboard updated event");
           }
         } else {
           print("UserService: Response success or data is missing: $responseData");

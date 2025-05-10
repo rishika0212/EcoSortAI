@@ -129,10 +129,18 @@ class LocalStorageService {
     print("LocalStorageService: Cleared authentication token while preserving user data");
   }
   
-  // Use this method if you need to completely reset all user data
-  // This can be used for troubleshooting or when explicitly requested by the user
+  // Use this method to completely reset all user data when logging out or switching users
   static Future<void> clearAllUserData() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    print("LocalStorageService: Clearing all user data");
+    
+    // Store the username temporarily for a better UX on next login
+    final username = prefs.getString(_usernameKey);
+    if (username != null) {
+      await prefs.setString('last_logged_in_user', username);
+      print("LocalStorageService: Saved last logged in username: $username");
+    }
     
     // Clear all authentication data
     await prefs.remove(_tokenKey);
@@ -145,6 +153,10 @@ class LocalStorageService {
     await prefs.remove(_ldpeCountKey);
     await prefs.remove(_ppCountKey);
     await prefs.remove(_psCountKey);
+    
+    // Also explicitly set points to 0 to ensure it's reset
+    await prefs.setInt(_pointsKey, 0);
+    print("LocalStorageService: Reset points to 0");
     
     // Clear batch counts
     await prefs.remove('batch_pet');

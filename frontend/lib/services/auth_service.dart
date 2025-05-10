@@ -25,8 +25,9 @@ class AuthService {
     final url = Uri.parse('$baseUrl/auth/login');
 
     try {
-      // Clear only authentication token but preserve user data
-      await LocalStorageService.clearAuthData();
+      // Clear all user data to prevent data from previous user being shown
+      print("AuthService: Clearing all user data before login");
+      await LocalStorageService.clearAllUserData();
       
       final response = await http.post(
         url,
@@ -42,24 +43,9 @@ class AuthService {
         await LocalStorageService.saveToken(token);
         await LocalStorageService.saveUsername(username);
 
-        // Just return success immediately - we'll fetch the profile in the background
-        // This prevents the login screen from showing an error
+        // We're no longer fetching the profile in the background
+        // The login screen will explicitly call refreshUserData() before navigating
         
-        // Start a background task to fetch the profile
-        Future.microtask(() async {
-          try {
-            await _storeUserProfile();
-            print("AuthService: Successfully fetched user profile in background");
-            
-            // Emit an event to notify the UI that the profile has been updated
-            final points = await LocalStorageService.getPoints();
-            EventBus().emitPointsUpdated(points);
-          } catch (e) {
-            print("AuthService: Failed to fetch profile in background: $e");
-            // Don't show an error to the user, just log it
-          }
-        });
-
         return {'success': true, 'data': data};
       } else {
         final error = jsonDecode(response.body);
@@ -109,7 +95,10 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    await LocalStorageService.clearAuthData();
+    print("AuthService: Logging out user");
+    // Clear all user data when logging out to prevent data from previous user being shown
+    await LocalStorageService.clearAllUserData();
+    print("AuthService: User data cleared");
   }
 
   Future<bool> isLoggedIn() async {
