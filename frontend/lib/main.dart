@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/auth_service.dart';
@@ -16,7 +15,13 @@ class EcoSortApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'EcoSortAI',
-      theme: ThemeData(primarySwatch: Colors.green),
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        fontFamily: 'Roboto',
+        textTheme: Theme.of(context).textTheme.apply(
+          fontFamily: 'Roboto',
+        ),
+      ),
       home: const AuthChecker(),
     );
   }

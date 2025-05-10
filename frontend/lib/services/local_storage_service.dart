@@ -31,6 +31,12 @@ class LocalStorageService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_usernameKey);
   }
+  
+  // Get the last logged in username (useful for login screen)
+  static Future<String?> getLastLoggedInUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('last_logged_in_user');
+  }
 
   static Future<void> savePoints(int points) async {
     final prefs = await SharedPreferences.getInstance();
@@ -107,8 +113,25 @@ class LocalStorageService {
     await prefs.clear();
   }
   
-  // Clear all authentication and user data when logging out
+  // Clear only authentication data when logging out, preserving user progress
   static Future<void> clearAuthData() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Only clear authentication token (security-sensitive)
+    await prefs.remove(_tokenKey);
+    
+    // Store the username temporarily for a better UX on next login
+    final username = prefs.getString(_usernameKey);
+    if (username != null) {
+      await prefs.setString('last_logged_in_user', username);
+    }
+    
+    print("LocalStorageService: Cleared authentication token while preserving user data");
+  }
+  
+  // Use this method if you need to completely reset all user data
+  // This can be used for troubleshooting or when explicitly requested by the user
+  static Future<void> clearAllUserData() async {
     final prefs = await SharedPreferences.getInstance();
     
     // Clear all authentication data
@@ -123,12 +146,28 @@ class LocalStorageService {
     await prefs.remove(_ppCountKey);
     await prefs.remove(_psCountKey);
     
+    // Clear batch counts
+    await prefs.remove('batch_pet');
+    await prefs.remove('batch_hdpe');
+    await prefs.remove('batch_ldpe');
+    await prefs.remove('batch_pp');
+    await prefs.remove('batch_ps');
+    await prefs.remove('last_batch_reset');
+    
+    // Clear batch goals reached status
+    await prefs.remove('batch_goal_reached_pet');
+    await prefs.remove('batch_goal_reached_hdpe');
+    await prefs.remove('batch_goal_reached_ldpe');
+    await prefs.remove('batch_goal_reached_pp');
+    await prefs.remove('batch_goal_reached_ps');
+    
     // Clear any other related data
     await prefs.remove('last_updated_plastic');
     await prefs.remove('last_update_time');
     await prefs.remove('last_profile_update');
     await prefs.remove('points'); // For backward compatibility
+    await prefs.remove('last_logged_in_user');
     
-    print("LocalStorageService: Cleared all user data during logout");
+    print("LocalStorageService: Cleared all user data completely");
   }
 }

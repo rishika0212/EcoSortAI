@@ -8,29 +8,12 @@ from app.database.db_utils import get_db
 router = APIRouter()
 
 
-def get_badge_and_color(points: int):
-    badge_levels = [
-        (500, "🚀 Planet Protector", "#388E3C"),
-        (400, "🛰️ Guardian of Green", "#66BB6A"),
-        (300, "👑 Eco Royalty", "#FFD700"),
-        (250, "🛡️ Plastic Defender", "#90CAF9"),
-        (200, "🔥 Streak Saver", "#EF9A9A"),
-        (150, "🧠 Sort Sensei", "#CE93D8"),
-        (100, "🌱 Eco Explorer", "#AED581"),
-        (70, "🎯 Precision Recycler", "#FFCC80"),
-        (50, "🔍 Sort Scout", "#A7FFEB"),
-        (40, "☕ PS Slayer", "#F8BBD0"),
-        (30, "🍱 PP Pioneer", "#FFF59D"),
-        (20, "📦 LDPE Legend", "#E0E0E0"),
-        (10, "🚰 HDPE Hero", "#81D4FA"),
-        (1, "🧴 PET Pro", "#B2EBF2"),
-        (0, "🐣 Green Beginner", "#D0F0C0"),
-    ]
+from app.users.utils import get_badge_by_points, get_badge_color
 
-    for threshold, badge, color in badge_levels:
-        if points >= threshold:
-            return badge, color
-    return "🐣 Green Beginner", "#D0F0C0"
+def get_badge_and_color(points: int):
+    badge = get_badge_by_points(points)
+    color = get_badge_color(points)
+    return badge, color
 
 
 @router.post("/points")

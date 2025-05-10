@@ -79,8 +79,8 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
       }
     });
     
-    // Set up a periodic refresh every 5 seconds
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    // Set up a periodic refresh every 30 seconds (reduced frequency to improve performance)
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
         print("PointsScreen: Timer tick ${timer.tick}");
         fetchUserStats();
@@ -353,14 +353,18 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
   
   // Get the badge label for a material type
   String _getMaterialBadgeLabel(String plasticType) {
-    final labels = {
+    return _getBadgeLabels()[plasticType] ?? 'Badge';
+  }
+  
+  // Centralized method for badge labels to avoid duplication
+  Map<String, String> _getBadgeLabels() {
+    return {
       'PET': '🧴 PET Pro',
       'HDPE': '🚰 HDPE Hero',
       'LDPE': '📦 LDPE Legend',
       'PP': '🍱 PP Pioneer',
       'PS': '☕ PS Slayer',
     };
-    return labels[plasticType] ?? 'Badge';
   }
   
   // Show a dialog when a new badge is earned
@@ -373,32 +377,69 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('$emoji New Badge Earned!', 
-            style: const TextStyle(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
+          title: Container(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  emoji,
+                  style: const TextStyle(fontSize: 28),
+                ),
+                const SizedBox(width: 8),
+                const Flexible(
+                  child: Text(
+                    'New Badge Earned!',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Text('Congratulations! You\'ve earned:',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Text(badge, 
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              const Text('Keep recycling to earn more badges!',
-                textAlign: TextAlign.center,
-              ),
-            ],
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                const Text(
+                  'Congratulations! You\'ve earned:',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      badge.substring(badge.indexOf(' ') + 1),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Keep recycling to earn more badges!',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Continue'),
+              child: const Text(
+                'Continue',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -416,32 +457,69 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('$emoji Material Badge Earned!', 
-            style: const TextStyle(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
+          title: Container(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  emoji,
+                  style: const TextStyle(fontSize: 28),
+                ),
+                const SizedBox(width: 8),
+                const Flexible(
+                  child: Text(
+                    'Material Badge Earned!',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Text('Congratulations! You\'ve earned:',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Text(badge, 
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              const Text('You\'ve reached the recycling goal for this material!',
-                textAlign: TextAlign.center,
-              ),
-            ],
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                const Text(
+                  'Congratulations! You\'ve earned:',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      badge.substring(badge.indexOf(' ') + 1),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'You\'ve reached the recycling goal for this material!',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Continue'),
+              child: const Text(
+                'Continue',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -450,8 +528,72 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
   }
 
   String _extractEmoji(String text) {
-    final match = RegExp(r'[\uD800-\uDBFF][\uDC00-\uDFFF]|[^\x00-\x7F]').firstMatch(text);
-    return match?.group(0) ?? '🐣';
+    if (text.isEmpty) return '🏆';
+    
+    // Map of known badge names to emojis to ensure consistent display
+    final Map<String, String> knownEmojis = {
+      // Material badges
+      'PET Pro': '🧴',
+      'HDPE Hero': '🚰',
+      'LDPE Legend': '📦',
+      'PP Pioneer': '🍱',
+      'PS Slayer': '☕',
+      
+      // Point-based badges
+      'Green Beginner': '🐣',
+      'Bin Rookie': '🔄',
+      'Plastic Pro': '🧴',
+      'Environment Hero': '🚰',
+      'Nature Legend': '📦',
+      'Green Guardian': '🍱',
+      'Trash Transformer': '☕',
+      'Sort Scout': '🔍',
+      'Precision Recycler': '🎯',
+      'Eco Explorer': '🌱',
+      'Sort Sensei': '🧠',
+      'Streak Saver': '🔥',
+      'Plastic Defender': '🛡️',
+      'Eco Royalty': '👑',
+      'Guardian of Green': '🛰️',
+      'Planet Protector': '🚀',
+    };
+    
+    // First try: direct extraction of emoji from the beginning of the text
+    if (text.isNotEmpty) {
+      // This regex matches emoji characters at the start of the string
+      // More comprehensive regex to match emoji sequences
+      final emojiMatch = RegExp(r'^([\p{Emoji}\u{FE0F}\u{1F3FB}-\u{1F3FF}]+)', unicode: true).firstMatch(text);
+      if (emojiMatch != null && emojiMatch.group(0) != null) {
+        return emojiMatch.group(0)!;
+      }
+    }
+    
+    // Second try: check if this is a known badge name
+    for (final entry in knownEmojis.entries) {
+      if (text.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+    
+    // Third try: extract the first character if it's an emoji
+    if (text.isNotEmpty) {
+      final firstChar = text.characters.first;
+      // Check if the first character is likely an emoji
+      if (firstChar.length > 1 || firstChar.codeUnitAt(0) > 127) {
+        return firstChar;
+      }
+    }
+    
+    // Fourth try: extract the first word if it contains non-ASCII characters
+    if (text.contains(' ')) {
+      final firstPart = text.split(' ')[0].trim();
+      if (firstPart.isNotEmpty && firstPart.codeUnits.any((c) => c > 127)) {
+        return firstPart;
+      }
+    }
+    
+    // Default emoji if nothing else works
+    return '🏆';
   }
 
   Widget _circleStat(String label, String value, Color color) {
@@ -474,8 +616,24 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
   }
 
   Widget _badgeProgress(String label, int current, int goal, Color color) {
-    // Extract plastic type from the badge label
-    final String plasticType = label.split(' ').last.replaceAll(RegExp(r'[^A-Z]'), '');
+    // Extract plastic type from the badge label more reliably
+    String plasticType = '';
+    
+    // Common plastic types to look for in the label
+    final plasticTypes = ['PET', 'HDPE', 'LDPE', 'PP', 'PS'];
+    
+    // Find which plastic type is in the label
+    for (final type in plasticTypes) {
+      if (label.contains(type)) {
+        plasticType = type;
+        break;
+      }
+    }
+    
+    // Fallback if no type was found
+    if (plasticType.isEmpty) {
+      plasticType = label.split(' ').last.replaceAll(RegExp(r'[^A-Z]'), '');
+    }
     
     // Check if this plastic type was recently updated
     final bool isUpdated = _recentlyUpdated[plasticType] ?? false;
@@ -624,10 +782,19 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      '$badgeEmoji Your Eco Impact',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          badgeEmoji,
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Your Eco Impact',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
                     Row(
@@ -767,10 +934,33 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      '🏅 Current Badge: $badgeName',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      textAlign: TextAlign.center,
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: themeColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: themeColor.withOpacity(0.5), width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              badgeEmoji,
+                              style: const TextStyle(fontSize: 24),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Current Badge: ${badgeName.substring(badgeName.indexOf(' ') + 1)}',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 30),
                     Card(
@@ -793,13 +983,7 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
                             ),
                             const SizedBox(height: 16),
                             ...scanCounts.entries.map((entry) {
-                              final labels = {
-                                'PET': '🧴 PET Pro',
-                                'HDPE': '🚰 HDPE Hero',
-                                'LDPE': '📦 LDPE Legend',
-                                'PP': '🍱 PP Pioneer',
-                                'PS': '☕ PS Slayer',
-                              };
+                              final labels = _getBadgeLabels();
                               final bool isUpdated = _recentlyUpdated[entry.key] ?? false;
                               
                               // Use a key to force rebuild when count changes
@@ -812,7 +996,7 @@ class _PointsScreenState extends State<PointsScreen> with WidgetsBindingObserver
                                     color: isUpdated ? themeColor.withOpacity(0.1) : Colors.transparent,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: _badgeProgress(labels[entry.key]!, entry.value, 10, themeColor),
+                                  child: _badgeProgress(labels[entry.key] ?? '${entry.key} Badge', entry.value, 10, themeColor),
                                 ),
                               );
                             }),

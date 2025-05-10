@@ -9,6 +9,7 @@ import '../screens/profile_screen.dart';
 import '../services/local_storage_service.dart';
 import '../services/user_service.dart';
 import '../services/event_bus.dart';
+import '../widgets/batch_goal_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   final String initialUsername;
@@ -105,6 +106,33 @@ class _HomeContentState extends State<HomeContent> {
   bool _isLoading = false;
   Map<String, dynamic> _extraInfo = {};
   late int _points;
+  
+  // Batch tracking - counts for the current session/batch
+  final Map<String, int> _batchCounts = {
+    'PET': 0,
+    'HDPE': 0,
+    'LDPE': 0,
+    'PP': 0,
+    'PS': 0,
+  };
+  
+  // Batch goals - when these counts are reached, show the congratulatory message
+  final Map<String, int> _batchGoals = {
+    'PET': 10,
+    'HDPE': 10,
+    'LDPE': 10,
+    'PP': 10,
+    'PS': 10,
+  };
+  
+  // Track which batch goals have been reached to avoid showing the dialog multiple times
+  final Map<String, bool> _batchGoalsReached = {
+    'PET': false,
+    'HDPE': false,
+    'LDPE': false,
+    'PP': false,
+    'PS': false,
+  };
 
   final ImagePicker _picker = ImagePicker();
 
@@ -113,6 +141,69 @@ class _HomeContentState extends State<HomeContent> {
     super.initState();
     _points = widget.initialPoints;
     _loadPoints();
+    _resetBatchCountsIfNeeded();
+  }
+  
+  // Reset batch counts if it's a new day or if they haven't been initialized yet
+  Future<void> _resetBatchCountsIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastBatchReset = prefs.getInt('last_batch_reset') ?? 0;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+    
+    // If it's a new day or if batch counts haven't been initialized yet, reset them
+    if (lastBatchReset < today) {
+      print("HomeScreen: Resetting batch counts for a new day");
+      
+      // Reset batch counts
+      for (final key in _batchCounts.keys) {
+        _batchCounts[key] = 0;
+      }
+      
+      // Reset batch goals reached flags
+      for (final key in _batchGoalsReached.keys) {
+        _batchGoalsReached[key] = false;
+        await prefs.setBool('batch_goal_reached_${key.toLowerCase()}', false);
+      }
+      
+      // Save the reset time
+      await prefs.setInt('last_batch_reset', today);
+      
+      // Save the batch counts
+      await _saveBatchCounts();
+    } else {
+      // Load saved batch counts
+      await _loadBatchCounts();
+    }
+  }
+  
+  // Save batch counts to SharedPreferences
+  Future<void> _saveBatchCounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final entry in _batchCounts.entries) {
+      await prefs.setInt('batch_${entry.key.toLowerCase()}', entry.value);
+    }
+    print("HomeScreen: Saved batch counts: $_batchCounts");
+  }
+  
+  // Load batch counts from SharedPreferences
+  Future<void> _loadBatchCounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in _batchCounts.keys) {
+      // Load the batch count
+      _batchCounts[key] = prefs.getInt('batch_${key.toLowerCase()}') ?? 0;
+      
+      // Load the batch goal reached status
+      _batchGoalsReached[key] = prefs.getBool('batch_goal_reached_${key.toLowerCase()}') ?? false;
+      
+      // Double-check if any batch goals have been reached but not marked
+      if (_batchCounts[key]! >= _batchGoals[key]! && !_batchGoalsReached[key]!) {
+        _batchGoalsReached[key] = true;
+        await prefs.setBool('batch_goal_reached_${key.toLowerCase()}', true);
+      }
+    }
+    print("HomeScreen: Loaded batch counts: $_batchCounts");
+    print("HomeScreen: Batch goals reached status: $_batchGoalsReached");
   }
 
   Future<String?> _getToken() async {
@@ -143,6 +234,31 @@ class _HomeContentState extends State<HomeContent> {
       
       print("HomeScreen: Incremented local plastic count for $plasticType");
       
+      // Update batch count for this plastic type if it's a valid type
+      if (_batchCounts.containsKey(plasticType)) {
+        // Increment the batch count
+        _batchCounts[plasticType] = (_batchCounts[plasticType] ?? 0) + 1;
+        await _saveBatchCounts();
+        print("HomeScreen: Updated batch count for $plasticType to ${_batchCounts[plasticType]}");
+        
+        // Check if batch goal is reached and not already shown
+        if (_batchCounts[plasticType]! >= _batchGoals[plasticType]! && !_batchGoalsReached[plasticType]!) {
+          // Mark this goal as reached
+          _batchGoalsReached[plasticType] = true;
+          
+          // Save the updated status
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('batch_goal_reached_${plasticType.toLowerCase()}', true);
+          
+          print("HomeScreen: Batch goal reached for $plasticType with count ${_batchCounts[plasticType]}");
+          
+          // Show batch goal reached dialog immediately
+          if (mounted) {
+            _showBatchGoalReachedDialog(plasticType, _batchCounts[plasticType]!);
+          }
+        }
+      }
+      
       // Then send to server
       final result = await UserService().updatePoints(increment, plasticType);
       
@@ -161,6 +277,9 @@ class _HomeContentState extends State<HomeContent> {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('points', serverPoints);
           
+          // Get the previous points before updating
+          final previousPoints = _points;
+          
           // Update the UI with server value
           setState(() {
             _points = serverPoints;
@@ -168,6 +287,9 @@ class _HomeContentState extends State<HomeContent> {
           
           // Emit an event to notify other screens
           EventBus().emitPointsUpdated(serverPoints);
+          
+          // Check if user has reached a new level badge
+          _checkForLevelBadgeAchievement(previousPoints, serverPoints);
           
           print("HomeScreen: Updated points from server: $serverPoints and emitted event");
         } else {
@@ -181,6 +303,9 @@ class _HomeContentState extends State<HomeContent> {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('points', newPoints);
           
+          // Get the previous points before updating
+          final previousPoints = _points;
+          
           // Update the UI
           setState(() {
             _points = newPoints;
@@ -188,6 +313,9 @@ class _HomeContentState extends State<HomeContent> {
           
           // Emit an event to notify other screens
           EventBus().emitPointsUpdated(newPoints);
+          
+          // Check if user has reached a new level badge
+          _checkForLevelBadgeAchievement(previousPoints, newPoints);
           
           print("HomeScreen: Updated points locally: $newPoints and emitted event");
         }
@@ -218,6 +346,142 @@ class _HomeContentState extends State<HomeContent> {
       print("Error updating points: $e");
     }
   }
+  
+  // Show a dialog when a batch goal is reached for a specific plastic type
+  void _showBatchGoalReachedDialog(String plasticType, int batchCount) {
+    if (!mounted) return;
+    
+    // Get the appropriate emoji for the plastic type
+    final String emoji = _getEmojiForPlasticType(plasticType);
+    
+    // Get the plastic-specific badge name
+    final String badgeName = _getBadgeNameForPlasticType(plasticType);
+    
+    // Define colors for plastic-specific badges (these could be moved to a constants file)
+    final Map<String, String> plasticColors = {
+      'PET': '#B2EBF2',  // Light cyan
+      'HDPE': '#81D4FA', // Light blue
+      'LDPE': '#E0E0E0', // Light grey
+      'PP': '#FFF59D',   // Light yellow
+      'PS': '#F8BBD0',   // Light pink
+    };
+    
+    // Get the color for this plastic type or use a default
+    final String badgeColor = plasticColors[plasticType] ?? '#FFD0F0'; // Default pink
+    
+    // Show the dialog
+    showDialog(
+      context: context,
+      builder: (context) => BatchGoalDialog(
+        plasticType: plasticType,
+        batchCount: batchCount,
+        badgeEmoji: emoji,
+        badgeName: badgeName,
+        badgeColor: badgeColor,
+        isPlasticTypeBadge: true, // Indicate this is a plastic-specific badge
+      ),
+    );
+  }
+  
+  // Show a dialog when a level badge is achieved
+  void _showLevelBadgeAchievedDialog(int points) {
+    if (!mounted) return;
+    
+    // Get the badge name and color for this level
+    final (String badgeName, String badgeColor) = _getBadgeNameAndColorForLevel(points);
+    
+    // Extract the emoji from the badge name
+    final String emoji = badgeName.split(' ')[0];
+    
+    // Show the dialog
+    showDialog(
+      context: context,
+      builder: (context) => BatchGoalDialog(
+        plasticType: '', // Not relevant for level badges
+        batchCount: points,
+        badgeEmoji: emoji,
+        badgeName: badgeName,
+        badgeColor: badgeColor, // Pass the badge color
+        isPlasticTypeBadge: false, // Indicate this is a level badge
+      ),
+    );
+  }
+  
+  // Get the appropriate badge name for a plastic type (plastic-specific badges)
+  String _getBadgeNameForPlasticType(String plasticType) {
+    final badges = {
+      'PET': '🧴 PET Pro',
+      'HDPE': '🚰 HDPE Hero',
+      'LDPE': '📦 LDPE Legend',
+      'PP': '🍱 PP Pioneer',
+      'PS': '☕ PS Slayer',
+    };
+    return badges[plasticType] ?? '♻️ Recycling Champion';
+  }
+  
+  // Get the badge name based on points (level-based badges)
+  (String, String) _getBadgeNameAndColorForLevel(int points) {
+    final levelBadges = [
+      (1000, "🚀 Planet Protector", "#388E3C"),
+      (900, "🛰️ Guardian of Green", "#66BB6A"),
+      (800, "👑 Eco Royalty", "#FFD700"),
+      (700, "🛡️ Plastic Defender", "#90CAF9"),
+      (600, "🔥 Streak Saver", "#EF9A9A"),
+      (500, "🧠 Sort Sensei", "#CE93D8"),
+      (450, "🌱 Eco Explorer", "#AED581"),
+      (400, "🎯 Precision Recycler", "#FFCC80"),
+      (350, "🔍 Sort Scout", "#A7FFEB"),
+      (300, "☕ PS Slayer", "#F8BBD0"),
+      (250, "🍱 PP Pioneer", "#FFF59D"),
+      (200, "📦 LDPE Legend", "#E0E0E0"),
+      (150, "🚰 HDPE Hero", "#81D4FA"),
+      (100, "🧴 PET Pro", "#B2EBF2"),
+      (50, "🔄 Bin Rookie", "#E6FFCC"),
+      (10, "🐣 Green Beginner", "#D0F0C0"),
+    ];
+    
+    for (final badge in levelBadges) {
+      if (points >= badge.$1) {
+        return (badge.$2, badge.$3);
+      }
+    }
+    
+    return ("🐣 Green Beginner", "#D0F0C0");
+  }
+  
+  // Check if the user has reached a new level badge
+  void _checkForLevelBadgeAchievement(int previousPoints, int newPoints) {
+    // Define the badge thresholds
+    final thresholds = [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000];
+    
+    // Find the highest threshold that was crossed
+    int? highestCrossedThreshold;
+    
+    for (final threshold in thresholds) {
+      // Check if this threshold was crossed with this points update
+      if (previousPoints < threshold && newPoints >= threshold) {
+        highestCrossedThreshold = threshold;
+      }
+    }
+    
+    // If a threshold was crossed, show the level badge dialog
+    if (highestCrossedThreshold != null) {
+      print("HomeScreen: Level badge threshold crossed: $highestCrossedThreshold");
+      _showLevelBadgeAchievedDialog(highestCrossedThreshold);
+    }
+  }
+  
+  // Get the appropriate emoji for a plastic type
+  String _getEmojiForPlasticType(String plasticType) {
+    final emojis = {
+      'PET': '🧴',
+      'HDPE': '🚰',
+      'LDPE': '📦',
+      'PP': '🍱',
+      'PS': '☕',
+    };
+    return emojis[plasticType] ?? '♻️';
+  }
 
   Future<void> _pickAndAnalyzeImage() async {
     final image = await _picker.pickImage(source: ImageSource.gallery);
@@ -229,7 +493,8 @@ class _HomeContentState extends State<HomeContent> {
       _isLoading = true;
     });
 
-    final uri = Uri.parse("http://192.168.1.222:8000/ml/predict"); // IP address of the server on the network
+    // Use the same base URL as defined in UserService
+    final uri = Uri.parse("${UserService.baseUrl}/ml/predict");
     final token = await _getToken();
 
     final request = http.MultipartRequest('POST', uri)

@@ -25,7 +25,7 @@ class AuthService {
     final url = Uri.parse('$baseUrl/auth/login');
 
     try {
-      // First, clear any existing data to ensure a clean state
+      // Clear only authentication token but preserve user data
       await LocalStorageService.clearAuthData();
       
       final response = await http.post(
