@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'user_service.dart';
 
 class MLService {
-  static const String baseUrl = "http://192.168.1.222:8000";
+  static const String baseUrl = "http://192.168.1.38:8000";
 
   Future<Map<String, String>> _getAuthHeaders() async {
     final prefs = await SharedPreferences.getInstance();

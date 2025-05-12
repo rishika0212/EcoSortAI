@@ -9,5 +9,5 @@ class AppConfig {
   // static const String serverUrl = "http://localhost:8000";
   
   // For specific network IP (update with your server's IP)
-  static const String serverUrl = "http://192.168.1.222:8000";
+  static const String serverUrl = "http://192.168.1.38:8000";
 }
