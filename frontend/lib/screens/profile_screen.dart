@@ -242,7 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          // Username only
+                          // Username and badge name
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,6 +256,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     color: AppColors.green,
                                   ),
                                   overflow: TextOverflow.ellipsis,
+                                ),
+                                // Badge name
+                                Text(
+                                  _badgeName,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black54,
+                                  ),
                                 ),
                               ],
                             ),

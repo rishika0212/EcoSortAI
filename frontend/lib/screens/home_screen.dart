@@ -7,6 +7,7 @@ import '../screens/education_screen.dart';
 import '../screens/points_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/leaderboard_screen.dart';
+import '../screens/recycling_map_screen.dart';
 import '../services/local_storage_service.dart';
 import '../services/user_service.dart';
 import '../services/event_bus.dart';
@@ -787,6 +788,137 @@ class _HomeContentState extends State<HomeContent> {
                 ],
               ),
               const SizedBox(height: 20),
+              
+              // Recycling Centers Map Card
+              Card(
+                margin: const EdgeInsets.only(bottom: 20),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RecyclingMapScreen()),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    children: [
+                      // Map preview image (simulated with a container)
+                      Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        ),
+                        child: Stack(
+                          children: [
+                            // Map grid background
+                            CustomPaint(
+                              size: const Size(double.infinity, 120),
+                              painter: MapGridPainter(),
+                            ),
+                            
+                            // Map pins
+                            const Positioned(
+                              left: 100,
+                              top: 40,
+                              child: Icon(Icons.location_on, color: Colors.red, size: 24),
+                            ),
+                            const Positioned(
+                              left: 180,
+                              top: 60,
+                              child: Icon(Icons.location_on, color: Colors.red, size: 24),
+                            ),
+                            const Positioned(
+                              left: 250,
+                              top: 30,
+                              child: Icon(Icons.location_on, color: Colors.red, size: 24),
+                            ),
+                            
+                            // Current location
+                            const Positioned(
+                              right: 20,
+                              bottom: 20,
+                              child: Icon(Icons.my_location, color: Colors.blue, size: 20),
+                            ),
+                            
+                            // Overlay with semi-transparent background
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [
+                                    Colors.black.withOpacity(0.6),
+                                    Colors.transparent,
+                                  ],
+                                  stops: const [0.0, 0.6],
+                                ),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                              ),
+                            ),
+                            
+                            // Title overlay
+                            const Positioned(
+                              bottom: 10,
+                              left: 16,
+                              child: Text(
+                                'Recycling Centers Near You',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Card content
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Find Recycling Centers',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Discover nearby places to recycle your items',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
               GestureDetector(onTap: _pickAndAnalyzeImage, child: const DottedBorderBox()),
               const SizedBox(height: 10),
               ElevatedButton(
@@ -858,5 +990,69 @@ class DottedBorderBox extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// Custom painter to draw a grid that simulates a map
+class MapGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey.withOpacity(0.3)
+      ..strokeWidth = 1;
+    
+    // Draw horizontal lines
+    for (var i = 0; i < size.height; i += 20) {
+      canvas.drawLine(
+        Offset(0, i.toDouble()),
+        Offset(size.width, i.toDouble()),
+        paint,
+      );
+    }
+    
+    // Draw vertical lines
+    for (var i = 0; i < size.width; i += 20) {
+      canvas.drawLine(
+        Offset(i.toDouble(), 0),
+        Offset(i.toDouble(), size.height),
+        paint,
+      );
+    }
+    
+    // Draw some "roads"
+    final roadPaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 3;
+    
+    // Horizontal roads
+    canvas.drawLine(
+      Offset(0, size.height / 3),
+      Offset(size.width, size.height / 3),
+      roadPaint,
+    );
+    
+    canvas.drawLine(
+      Offset(0, size.height * 2 / 3),
+      Offset(size.width, size.height * 2 / 3),
+      roadPaint,
+    );
+    
+    // Vertical roads
+    canvas.drawLine(
+      Offset(size.width / 4, 0),
+      Offset(size.width / 4, size.height),
+      roadPaint,
+    );
+    
+    canvas.drawLine(
+      Offset(size.width * 3 / 4, 0),
+      Offset(size.width * 3 / 4, size.height),
+      roadPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }
