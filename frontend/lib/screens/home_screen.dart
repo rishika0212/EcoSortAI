@@ -571,7 +571,58 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Future<void> _pickAndAnalyzeImage() async {
-    final image = await _picker.pickImage(source: ImageSource.gallery);
+    // Show a dialog to let the user choose between camera and gallery
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Choose Image Source'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                GestureDetector(
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.camera_alt, color: Colors.green),
+                        SizedBox(width: 10),
+                        Text('Take a Photo'),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _getImageAndAnalyze(ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.photo_library, color: Colors.green),
+                        SizedBox(width: 10),
+                        Text('Pick from Gallery'),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _getImageAndAnalyze(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Future<void> _getImageAndAnalyze(ImageSource source) async {
+    final image = await _picker.pickImage(source: source);
     if (image == null) return;
 
     print("HomeScreen: Starting image analysis, setting _isLoading = true");

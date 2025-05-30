@@ -8,7 +8,7 @@ import 'event_bus.dart';
 class UserService {
   // static const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator to connect to localhost
   // static const String baseUrl = "http://localhost:8000"; // For local testing
-  static const String baseUrl = "http://192.168.1.38:8000"; // IP address of the server on the network
+  static const String baseUrl = "http://192.168.51.192:8000"; // IP address of the server on the network
 
   // Construct auth headers including JWT token
   Future<Map<String, String>> _getAuthHeaders() async {

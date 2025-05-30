@@ -8,7 +8,7 @@ import 'user_service.dart';
 import 'event_bus.dart';
 
 class AuthService {
-  static const String baseUrl = "http://192.168.1.38:8000";
+  static const String baseUrl = "http://192.168.51.192:8000";
 
   Future<Map<String, String>> _getHeaders({bool includeAuth = false}) async {
     final headers = {'Content-Type': 'application/json'};
